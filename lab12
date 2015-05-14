@@ -1,0 +1,7 @@
+In criptate asimetrica 
+
+P - plain text -> mesajul trimis
+E - encryption key -> cheie publica 
+D - decription key -> cheie privata
+
+openssl x509 -req -days 365

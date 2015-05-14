@@ -1,0 +1,33 @@
+Andrei Ciprian Dobre 325CB
+
+				   PROTOCOALE DE COMUNICATIE: Tema #1
+				       	   Server de fisiere
+
+1. Abordare si mod de rezolvare
+	Pentru abordarea cerintelor din cadrul temei am realizat un "framework" in jurul celor doua functii de baza cu rol de trimitere si receptionare a mesajelor prezentate in cadrul laboratorului. Intentia a fost de a delega cat mai multa responsabilitate functiilor de send / receive pentru a reduce la strictul necesar codul functiilor ce se adreseaza direct cerintelor (ls, cd, cp, etc.). Mai precis, in cadrul functiilor specifice cerintelor se regasesc in mare doar apeluri ale functiilor oferite de sistemul de operare, citire a fisierelor si apelare a functiilor send / receive. Acestea din urma contin in mare operatii cu memoria si asigura ordinea corecta a comunicarii (ACK/NACK).
+
+	Rezolvarea modului parity:
+	Dupa obtinerea corecta a continutului programul calculeaza paritatea fiecarui pachet iterand prin octetii acestuia si verificand parittea fiecaruia( folosind getParity(contint, dimensiune) ). Daca paritatea nu este aceeasi cu cea primita atunci se cere un nou pachet. Procesul are loc pana cand este primit un pachet corect.
+
+	Pentru rezolvarea modului Hamming pasii au fost urmatorii:
+	a) Operatii la primire
+	primire pachet 
+		-> iterare prin octetii pachetului doi cate doi si aplicarea unei functii de corectie ( hemmingCorrecter(byte1, byte2)  )
+			-> dupa corectie, folosind un buffer si un apel catre o functie de decode ( hemmingDecode(byte1, byte2) ) se obtin octetii decodificati, fiecare pastrat in buffer
+				-> la sfarsitul iterarii este returnat buffer, un string cu mesajul decodificat
+	b) Pentru a trimite un pachet
+	primire continut pachet 
+		-> realizarea unui buffer iterand prin octetii continutului si apeland o functie de generare ( hemmingGen(octet, &code_byte1, &code_byte2) )
+			-> la finalul iterarii este returnat buffer, un string continand codul Hamming
+	
+2. Descrierea structurii
+	Caracteristici:
+	- Cele 3 moduri de rulare functioneaza pe baza unui switch case si a unei variabile globale setata la inceputul executiei
+	- Mesajele ACK/NACK sunt trimise separat de restul mesajelor avand rezervate functii proprii
+	- Transmisia de mesaje foloseste la maximum capacitatea pachetului in fiecare din cele 3 cazuri
+	- Pentru interpretarea diverselor comenzi am folosit o combinatie de parser si switch case
+	- Functiile de baza send_message(*msg) si recv_message(*msg) nu mai sunt apelate direct de functiile ce implementeaza cerintele temei ci sunt incapsulate in functii send / receive cu mai multe functionalitati.
+
+	Alte observatii:
+	Am incercat pe cat posibil sa prind erorile tuturor functiilor asa incat sa nu am comportament nedefinit in program.
+	Implementarea corectarii de mesaje folosind coduri Hamming este intr-o oarecare masura "hard-codata" pe cazul descris in tema cu 8 biti de informatie si 12 biti de cod. Cum numarul bitilor de informatie este relativ mic a fost usor sa scriu operatii pe biti pentru fiecare dintre ei.

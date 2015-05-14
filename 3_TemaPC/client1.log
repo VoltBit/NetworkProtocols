@@ -1,0 +1,42 @@
+client1> share ftest
+Succes
+client1> infoclients
+client1 127.0.0.1 12500
+client2 127.0.0.1 12502
+client1> unshare ftest
+Succes
+2
+f21 100KiB
+f22 2KiB
+-3 : Client inexistent
+client1> unshare tt
+-5 : Fisier inexistent
+2
+f22 2KiB
+f24 2MiB
+client1> quit
+client1> share ftest
+Succes
+client1> quit
+client1> infoclients
+client1 127.0.0.1 12500
+client1> share ftest
+Succes
+client1> share ftest2
+Succes
+client1> share ftest1
+Succes
+client1> getshare client1
+3
+ftest 210MiB
+ftest1220200960 15KiB
+ftest2220200960 210MiB
+client1> getshare flf
+-3 : Client inexistent
+client1> unshare ff
+-5 : Fisier inexistent
+client1> unshare ftest
+Succes
+client1> infoclients
+client1 127.0.0.1 12500
+client1> quit

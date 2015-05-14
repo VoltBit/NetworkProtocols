@@ -1,0 +1,25 @@
+client2> share f21
+Succes
+client2> share f22
+Succes
+client2> share f24
+Succes
+client2> unshare f21
+Succes
+client2> quit
+client2> share f22
+Succes
+client2> share 23
+-5 : Fisier inexistent
+client2> share f23
+Succes
+client2> unshare ff
+-5 : Fisier inexistent
+client2> getshare
+-3 : Client inexistent
+client2> getshare
+1
+ftest 210MiB
+client2> quit
+client2> quit
+client2> quit

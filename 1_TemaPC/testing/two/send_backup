@@ -1,0 +1,96 @@
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+
+#include "lib.h"
+
+#define HOST "127.0.0.1"
+#define PORT 10000
+
+void ls(){
+	char* name;
+
+	name = malloc(255 * sizeof(char));
+	printf("Insert name of directory: ");
+	scanf("%s", name);
+	DIR* dirStream = opendir(name);
+	struct dirent* dirContents = readdir(dirStream);
+	while(dirContents){
+		printf("%s ", dirContents->d_name);
+		dirContents = readdir(dirStream);	
+	}
+	printf("\n");
+}
+
+void cd(){
+	char* name;
+	name = malloc(255 * sizeof(char));
+	printf("change directory path: ");
+	scanf("%s", name);
+	chdir(name);
+	printf("%s", getcwd(name, 255 * sizeof(char)));
+	printf("\n\n");
+}
+
+void cp(){
+	char name[255];
+	void* buffer = malloc(100 * sizeof(char));
+	printf("file to copy: ");
+	scanf("%s", name);
+	FILE* fileStream = fopen(name, "r");
+	char newName[255] = "new_";
+	strcat(newName, name);
+	int fileDescriptor = open(newName, O_CREAT|O_WRONLY|O_TRUNC);
+	while(!feof(fileStream)){
+		fread(buffer, 100, 1, fileStream);
+		write(fileDescriptor, buffer, 100);
+	}
+	close(fileDescriptor);
+}
+
+
+
+int main(int argc, char *argv[])
+{
+	msg t;
+	int i, res = 0;
+
+	// ls();
+	// cd();
+	// cp();
+
+	printf("[SENDER] Starting.\n");	
+	init(HOST, PORT);
+	/* printf("[SENDER]: BDP=%d\n", atoi(argv[1])); */
+	
+	for (i = 0; i < COUNT; i++) {
+		/* cleanup msg */
+		memset(&t, 0, sizeof(msg));
+		
+		/* gonna send an empty msg */
+		t.len = MSGSIZE;
+		
+		/* send msg */
+		res = send_message(&t);
+		if (res < 0) {
+			perror("[SENDER] Send error. Exiting.\n");
+			return -1;
+		}
+		
+		/* wait for ACK */
+		res = recv_message(&t);
+		if (res < 0) {
+			perror("[SENDER] Receive error. Exiting.\n");
+			return -1;
+		}
+	}
+
+	printf("[SENDER] Job done, all sent.\n");
+		
+	return 0;
+}

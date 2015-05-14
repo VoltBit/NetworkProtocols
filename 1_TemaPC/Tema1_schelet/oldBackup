@@ -1,0 +1,339 @@
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <dirent.h>
+#include <errno.h>
+#include <math.h>
+#include "lib.h"
+
+#define HOST "127.0.0.1"
+#define PORT 10001
+
+int parseMsg(msg message){
+	if(message.payload[0] == 'l')return 1;
+		else if(message.payload[0] == 'c' && message.payload[1] == 'd')return 2;
+			else if(message.payload[0] == 'c' && message.payload[1] == 'p') return 3;
+				else if(message.payload[0] == 's') return 4;
+					else if(strcmp("exit exit",message.payload) == 0) return 0;
+	return 5;
+}
+
+int countFiles(DIR* dirStream){
+	struct dirent* dirContents = readdir(dirStream);
+	int counter = 0;
+	while(dirContents){
+		counter++;
+		dirContents = readdir(dirStream);
+	}
+	return counter;
+}
+
+long getSizeOfFile(char* name){
+	FILE* fileStream = fopen(name, "r");
+	fseek(fileStream, 0L, SEEK_END);
+	int aux = ftell(fileStream);
+	fclose(fileStream);
+	return aux;
+}
+
+void intToString(int x, char* string){
+	int j, i = 0;
+	while(x > 0){
+		string[i] = x % 10 + 48;	
+		i++;
+		x /= 10;
+	}
+	char aux;
+	for(j = 0; j < i / 2; j++){
+		aux = string[j];
+		string[j] = string[i - j - 1];
+		string[i - j - 1] = aux;
+	}
+	string[i] = '\0';
+}
+
+void longToString(long x, char* string){
+	int j, i = 0;
+	while(x > 0){
+		string[i] = x % 10 + 48;	
+		i++;
+		x /= 10;
+	}
+	char aux;
+	for(j = 0; j < i / 2; j++){
+		aux = string[j];
+		string[j] = string[i - j - 1];
+		string[i - j - 1] = aux;
+	}
+	string[i] = '\0';
+}
+
+int ls(char* name){
+	msg r;
+	int res, num_files = 0;
+	char converted[255];
+	/* count number of files */
+	DIR* dirStream = opendir(name);
+	if(dirStream == NULL){
+		printf("Directory open error!\n");
+		return -1;
+	}
+	num_files = countFiles(dirStream);
+	intToString(num_files, converted);
+	
+	r.len = strlen(converted); // QQQQQQQQ len este numarul de octeti?
+	memcpy(r.payload, converted, r.len);
+	printf("\nNr fisiere: %i\n", num_files);
+	/* send number of files */
+	res = send_message(&r);
+	if (res < 0) {
+		perror("[RECEIVER] Send number of files error. Exiting.\n");
+		return -1;
+	}
+	// printf("\nCheck sending msg: %s\n", r.payload);
+	/* wait for ACK */
+	res = recv_message(&r);
+	if (res < 0) {
+		perror("[SERVER] Receiving ACK error. Exiting.\n");
+		return -1;
+	}
+	// printf("\nCheck ACK msg: %s\n", r.payload);
+	/* itereate through files, send them one by one and wait for ACK after each send*/
+	dirStream = opendir(name);
+	struct dirent* dirContents = readdir(dirStream);
+	if(dirContents == NULL)printf(">>>Read directory error!<<<");
+	int aux = 0;
+	while(aux < num_files){
+		aux++;
+		r.len = sizeof(dirContents->d_name);
+		memcpy(r.payload, dirContents->d_name, r.len);
+		// printf("\nCheck payload: %s [%i]\n", r.payload, r.len);
+		/* send file name */
+		res = send_message(&r);
+		if (res < 0) {
+			printf("\nNasol\n");
+			perror("[RECEIVER] Send file name error. Exiting.\n");
+			return -1;
+		}
+		printf("\nCheck sending msg: %s\n", r.payload);
+		/* wait for ACK */
+		res = recv_message(&r);
+		if (res < 0) {
+			printf("\nNasol\n");
+			perror("[SERVER] Receiving ACK error. Exiting.\n");
+			return -1;
+		}
+		printf("\nCheck ACK: %s\n", r.payload);
+		dirContents = readdir(dirStream);
+	}
+	printf("\n\n");
+	closedir(dirStream);
+	return 0;
+}
+
+int cp(char* name){
+	int res;
+	msg r;
+	printf("file to copy: %s\n", name);
+	char buffer[1401], converted[255];
+	int readFileDescriptor = open(name, O_RDONLY);
+	long fileSize = getSizeOfFile(name);
+	printf("Test file size: %li\n", fileSize);
+	longToString(fileSize, converted);
+	r.len = sizeof(converted);
+	memcpy(r.payload, converted, r.len);
+	res = send_message(&r);
+	if (res < 0) {
+		perror("[RECEIVER] Send number of file parts error. Exiting.\n");
+		return -1;
+	}
+	/* wait for ACK */
+	res = recv_message(&r);
+	if (res < 0) {
+		perror("[SERVER] Receiving ACK error. Exiting.\n");
+		return -1;
+	}
+	printf("[cp] received: %s\n", r.payload);
+	int aux = read(readFileDescriptor, buffer, 1400);
+	while(aux != 0){
+		/* send number of files */
+		memcpy(r.payload, buffer, aux);
+		r.len = aux;
+		res = send_message(&r);
+		if (res < 0) {
+			perror("[RECEIVER] Send of file parts error. Exiting.\n");
+			return -1;
+		}
+		printf("\n [cp] sending size: %i", r.len);
+		/* wait for ACK */
+		res = recv_message(&r);
+		if (res < 0) {
+			perror("[SERVER] Receiving ACK error. Exiting.\n");
+			return -1;
+		}
+		printf("[cp] receiving: %s\n", r.payload);
+		aux = read(readFileDescriptor, buffer, aux);
+	}
+	close(readFileDescriptor);
+	return 0;
+}
+
+int sn(char* name){
+	msg r;
+	int res;
+
+	char newName[255] = "new_";
+	strcat(newName, name);
+	int writeFileDescriptor = open(newName, O_CREAT|O_WRONLY|O_TRUNC, 0766);
+
+	/* receive file size */
+	res = recv_message(&r);
+	if (res < 0) {
+		perror("[SERVER] Receiving file size error. Exiting.\n");
+		return -1;
+	}
+	// printf("[sn] received: %s\n", r.payload);
+	/* send ACK for receiving the command */
+	res = send_message(&r);
+	if(res < 0){
+		perror("[SERVER] Sending ACK error. Exiting \n");
+		return -1;
+	}
+	int fileSize = atoi(r.payload);
+	// printf("Test received file size: %i\n", fileSize);
+
+	long counter = 0;
+	while(counter < fileSize){
+		/* receive file piece */
+		res = recv_message(&r);
+		if (res < 0) {
+			perror("[SERVER] Receiving file piece error. Exiting.\n");
+			return -1;
+		}
+		write(writeFileDescriptor, r.payload, r.len);
+		counter += r.len;
+		/* send ACK for receiving the command */
+		res = send_message(&r);
+		if(res < 0){
+			perror("[SERVER] Sending ACK error. Exiting \n");
+			return -1;
+		}
+	}
+	return 0;
+}
+
+char findParity(char* package){
+	char parity = 0;
+	int i, n = strlen(package);
+	char aux;
+	printf("\n size: %i\n", n);
+	for(i = 0; i < n; i++){
+		aux = package[i];
+		while(aux){
+			if(aux & 1){
+				parity = !parity;
+				printf("1");
+			}
+			else
+				printf("0");
+			aux >>= 1;
+		}
+		printf(" ");
+	}
+	printf("\n Parity: %i\n", parity);
+	return parity;
+}
+
+int main(int argc, char* argv[])
+{
+	msg r;
+	int i, res;
+	char name[1401];
+	printf("[RECEIVER] Starting.\n");
+	init(HOST, PORT);
+	for (i = 0; i < COUNT; i++) {
+		memset(&r, 0, sizeof(msg));
+		/* wait for message */
+
+		/* recieve a command */
+		res = recv_message(&r);
+		if(res < 0){
+			perror("[SERVER] Receive error. Exiting.\n");
+			return -1;
+		}
+		/* find out what command has been received */
+		int ch = parseMsg(r);
+		switch(ch){
+			case 1: // received ls command
+
+				/* send ACK for receiving the command */
+				res = send_message(&r);
+				if(res < 0){
+					perror("[SERVER] Sending ACK error. Exiting \n");
+					return -1;
+				}
+
+				printf("\nlist files\n");
+				memcpy(name, r.payload + 3, sizeof(r.payload) - 3);
+				if(strcmp(name,".") == 0){
+					getcwd(name, 255 * sizeof(char));
+				}
+				ls(name);
+				break;
+
+			case 2:
+				/* send ACK for receiving the command */
+				res = send_message(&r);
+				if(res < 0){
+					perror("[SERVER] Sending ACK error. Exiting \n");
+					return -1;
+				}	
+				printf("\tchange directory\n");			
+				memcpy(name, r.payload + 3, r.len);
+				if(chdir(name) != 0) printf("change directory error: \n%i\t", errno);
+				printf("Test: %s\n", getcwd(name, 255 * sizeof(char)));
+				break;
+
+			case 3:
+				printf("\ncopy\n");
+				/* send ACK for receiving the command */
+				res = send_message(&r);
+				if(res < 0){
+					perror("[SERVER] Sending ACK error. Exiting \n");
+					return -1;
+				}
+				cp(r.payload + 3);
+				break;
+
+			case 4:
+				printf("\nwrite new file");
+				/* send ACK for receiving the command */
+				res = send_message(&r);
+				if(res < 0){
+					perror("[SERVER] Sending ACK error. Exiting \n");
+					return -1;
+				}
+				sn(r.payload + 3);				
+				break;
+
+			case 5:
+				printf("Error");
+				break;
+
+			case 0:
+				res = send_message(&r);
+				if(res < 0){
+					perror("[SERVER] Sending ACK error. Exiting \n");
+					return -1;
+				}
+				printf("\nExit\n");
+				return 0;
+				break;
+		}
+	}
+
+	printf("[RECEIVER] Finished receiving..\n");
+	return 0;
+}

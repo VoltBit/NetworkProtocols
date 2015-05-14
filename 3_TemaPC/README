@@ -1,0 +1,17 @@
+Tema 2 - Sistem de partajare a fisierelor		
+Dobre Andrei Ciprian 325CB
+
+1. Descriere generala
+	In implementarea temei am incercat o modularizare cat mai buna, in special la nivel de parsare a inputului, detectare de erori si functionalitati. Functiile folosite sunt doar cele prentate in cadrul laboratorului + fcntl() pentru a face socketii non-blocanti. Multiplexarea conexiunii este realizata folosind select().
+
+2. Descrierea functiilor:
+	Infoclients - protocolul urmat este acela de trimitere secventiala a liniilor continand informatia despre clienti dinspre server catre clienti si trimitere de mesaje ACK dinspre clienti catre server. Motivul pentru care am ales aceasta implementare este pentru ca initial nu eram sigur care sunt limitarile legate de clienti si nu am considerat sigur sa trimit toata informatia deodata. Mesajele ACK sunt de fapt un 'workaround' pentru faptul ca apelurile send / recv sunt sunt corespondete perfect, adica recv poate primi informatia trimisa de doua send-uri deodata, iar informatia devine prost formatata.
+
+	Getshare - pentru retinerea fisierelor in memorie am considerat util sa folosesc un map cu numele fisierelor pe post de chei si dimensiunea lor ca informatie. Informatia este transmisa serializand map-ul sub forma unui array care este trimis deodata clientului unde este expandat inapoi in map. Pentru ca serverul poate returna un mesaj de eroare in loc de informatia despre fisiere, in primi 3 octeti din mesajul transmis cu array-ul dorit apare mesajul "OK ". Daca serverul detecteaza o eroare atunci el trimite doar cifra reprezentativa erorii. Clientul verifica daca in mesajul primit exista header-ul "OK" si decide daca parseaza map-ul sau afiseaza eroare. Formatarea dimensiunii pentru display-ul specific cerintei se realizeaza client-side.
+
+	Share - utilizeaza functia stat pentru a obtine dimensiunea, compune mesajul si il trimite catre server. Fisierele sunt inregistrate intr-o structura locala.
+
+	Unshare - similar cu functia Share si Getshare - realizeaza operatiile inverse lui share, dar foloseste 'protocolul' descris la functia Getshare pentru identificarea erorilor.
+
+	Getfile
+		Pentru a implementa functionalitatea ceruta la functia getfile - transferul concomitent a mai multor fisiere - am folosit socket-uri non-blocante. Aboradrea a fost de a creea un obiect special care retien informatii necesare pentru fisiere - starea n care se afla transmisia si metode pentru completarea campurilor (socket, file descriptor etc.) si pentru citire, transmitere de informatii. Transmiterea de date de la un client la altul nu functioneaza, iar partea de receptionare a fisierelor pentru client nu este implementata.
