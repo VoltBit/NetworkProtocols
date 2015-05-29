@@ -1,0 +1,17 @@
+Protocoale de comunicatie - Tema 4
+Dobre Andrei Ciprian 325CB
+
+Descriere generala
+	Impelementarea temei functioneaza in mare dupa urmatorul principiu: programul se conecteaza la server si trimite un request in formatul HTTP 1.0 pentru a accesa pagina html primita la input. Sursa paginii este desarcata si parsata pentru a obtine toate link-urile conforme cu cerinta. Acestea sunt impartite in doau seturi: pagini .html si alte fisiere. Setul cu pagini html este primul parcurs, pasii de mai sus fiidn aplicati din nou, iar in timpul pacurgerii se realizeaza si descarcarea surselor si creearea structurii de directoare. Setul al doilea este parcurs daca este primita optiunea -r, fiecare fisier este cerut print-un request http apoi scris pe hard-disk.
+
+Descrierea fiserelor
+	http_client.cpp
+	Contine intreaga implementare a cerintelor. In functia main are loc parsarea input-ului si epuizarea setului de pagini html. Daca programul nu primeste nici o optiune atunci setul initial de linkuri nu mai este accesat.
+
+	sysops.h si sysops.cpp
+	Clasa wrapper peste functionalitatile specifice sisteului - mkdir si redirectare a stderr. Aici este realizata o componenta importanta a sistemului de logging si anume redirectarea stderr in fisierul de log furnizat clasei prin functia set_logfile(). Toate mesajele sunt trimise catre stderr si in cazul in care este primit flagul -o ele sunt redirectate. Din pacate implementarea neatenta a dus la un "file descriptor leakage" si a trebuit sa renunt al idee in favoare unui simplu fisier declarat global si deschis pentru scriere in main(). Functia makedir_all realizeaza intreaga structura de directoare din calea unui fisier, luand fiecare folder din cale si incarcand sa il creeze.
+
+Am folosit protocolul HTTP 1.0 pentru ca folosind 1.1, dupa finalul fiecarei serii de apelui recv(), conexiunea era inchisa. Am considerat deci ca nu mai exista nici un avantaj in a folosi 1.1. Conexiunea cu serverul este realizata inainte de fiecare transfer si inchisa imediat dupa.
+
+	Observatii
+	Programul are probabil probleme de performanta din cauza felului in care am facut structura de fisiere - pentru fiecare link se incarca realizarea fiecarui folder din cale de fiecare data.

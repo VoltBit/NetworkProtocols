@@ -1,0 +1,6 @@
+mkdir: cannot create directory ‘/home/smith/Desktop/testf’: File exists
+mkdir: cannot create directory ‘/home/smith/Desktop/testf’: File exists
+mkdir: cannot create directory ‘/home/smith/Desktop/testf’: File exists
+mkdir: cannot create directory ‘/home/smith/Desktop/testf’: File exists
+mkdir: cannot create directory ‘/home’: File exists
+terminate called after throwing an instance of 'std::string'
